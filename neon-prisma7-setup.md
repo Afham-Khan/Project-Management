@@ -1,4 +1,4 @@
-# Neon + Prisma 7 Setup (GreatStack Project)
+# Neon + Prisma 7 Setup 
 
 This document records the setup used for the Project Management backend
 with **Neon PostgreSQL, Prisma 7.10.1, and the Neon driver adapter**.
