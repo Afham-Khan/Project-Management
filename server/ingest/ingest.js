@@ -1,4 +1,5 @@
 import { Inngest } from "inngest";
+import prisma from '../configs/prisma.js'
 
 // Create a client to send and receive events
 export const inngest = new Inngest({ id: "Project-Management" });
@@ -9,14 +10,15 @@ const syncUserCreation = inngest.createFunction(
   { id: "Sync-user-from-clerk", event: "clerk/user.created" },
   async ({ event }) => {
     const { data } = event;
+    const fullName = [data.first_name, data.last_name].filter(Boolean).join(" ") || null;
+
     await prisma.user.create({
       data: {
         id: data.id,
-        email: data?.email_addresses[0]?.email_address,
-        firstName: data.first_name,
-        lastName: data.last_name,
-        imageUrl: data.profile_image_url,
-        },
+        email: data?.email_addresses?.[0]?.email_address ?? "",
+        name: fullName,
+        image: data.profile_image_url ?? data.image_url ?? null,
+      },
     });
   }
 );
@@ -39,15 +41,15 @@ const syncUserUpdate = inngest.createFunction(
   { id: "update-user-from-clerk", event: "clerk/user.updated" },
     async ({ event }) => {
     const { data } = event;
+    const fullName = [data.first_name, data.last_name].filter(Boolean).join(" ") || null;
     await prisma.user.update({
       where: {
         id: data.id,
       },
       data: {
         email: data?.email_addresses[0]?.email_address,
-        firstName: data.first_name,
-        lastName: data.last_name,
-        imageUrl: data.profile_image_url,
+        name: fullName,
+        image: data.profile_image_url ?? data.image_url ?? null,
       },
     });
   }
