@@ -3,31 +3,35 @@ import prisma from "../config/prisma.js";
 
 export const inngest = new Inngest({ id: "Project-Management" });
 
+// Prisma schema has `name String` and `image String` (both NOT NULL),
+// so never pass null for them.
+const buildUserFields = (data) => {
+  const email = data?.email_addresses?.[0]?.email_address ?? "";
+  const fullName = [data.first_name, data.last_name].filter(Boolean).join(" ");
+  return {
+    email,
+    name: fullName || email.split("@")[0] || "User",
+    image: data.image_url ?? data.profile_image_url ?? "",
+  };
+};
+
+// Inngest v4: triggers go in the FIRST argument as `triggers`, handler is the second.
 const syncUserCreation = inngest.createFunction(
-  { id: "Sync-user-from-clerk", event: "clerk/user.created" },
+  { id: "Sync-user-from-clerk", triggers: [{ event: "clerk/user.created" }] },
   async ({ event }) => {
     const { data } = event;
-    const fullName = [data.first_name, data.last_name].filter(Boolean).join(" ") || null;
+    const fields = buildUserFields(data);
 
     await prisma.user.upsert({
       where: { id: data.id },
-      update: {
-        email: data?.email_addresses?.[0]?.email_address ?? "",
-        name: fullName,
-        image: data.profile_image_url ?? data.image_url ?? null,
-      },
-      create: {
-        id: data.id,
-        email: data?.email_addresses?.[0]?.email_address ?? "",
-        name: fullName,
-        image: data.profile_image_url ?? data.image_url ?? null,
-      },
+      update: fields,
+      create: { id: data.id, ...fields },
     });
   }
 );
 
 const syncUserDeletion = inngest.createFunction(
-  { id: "delete-user-from-clerk", event: "clerk/user.deleted" },
+  { id: "delete-user-from-clerk", triggers: [{ event: "clerk/user.deleted" }] },
   async ({ event }) => {
     const { data } = event;
     await prisma.user.deleteMany({
@@ -37,18 +41,13 @@ const syncUserDeletion = inngest.createFunction(
 );
 
 const syncUserUpdate = inngest.createFunction(
-  { id: "update-user-from-clerk", event: "clerk/user.updated" },
+  { id: "update-user-from-clerk", triggers: [{ event: "clerk/user.updated" }] },
   async ({ event }) => {
     const { data } = event;
-    const fullName = [data.first_name, data.last_name].filter(Boolean).join(" ") || null;
 
     await prisma.user.updateMany({
       where: { id: data.id },
-      data: {
-        email: data?.email_addresses?.[0]?.email_address ?? "",
-        name: fullName,
-        image: data.profile_image_url ?? data.image_url ?? null,
-      },
+      data: buildUserFields(data),
     });
   }
 );
