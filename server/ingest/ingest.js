@@ -7,7 +7,8 @@ export const inngest = new Inngest({ id: "Project-Management" });
 // Create ingest fnc 
 
 const syncUserCreation = inngest.createFunction(
-  { id: "Sync-user-from-clerk", event: "clerk/user.created" },
+  { id: "Sync-user-from-clerk" },
+  { event: "clerk/user.created" },
   async ({ event }) => {
     const { data } = event;
     const fullName = [data.first_name, data.last_name].filter(Boolean).join(" ") || null;
@@ -23,31 +24,28 @@ const syncUserCreation = inngest.createFunction(
   }
 );
 
-// delete user from database when user is deleted from clerk
 const syncUserDeletion = inngest.createFunction(
-  { id: "delete-user-from-clerk", event: "clerk/user.deleted" },
-    async ({ event }) => {
+  { id: "delete-user-from-clerk" },
+  { event: "clerk/user.deleted" },
+  async ({ event }) => {
     const { data } = event;
-    await prisma.user.delete({
-      where: {
-        id: data.id,
-        },
+    await prisma.user.deleteMany({
+      where: { id: data.id },
     });
-  }     
-)
+  }
+);
 
-// update user in database when user is updated in clerk
 const syncUserUpdate = inngest.createFunction(
-  { id: "update-user-from-clerk", event: "clerk/user.updated" },
-    async ({ event }) => {
+  { id: "update-user-from-clerk" },
+  { event: "clerk/user.updated" },
+  async ({ event }) => {
     const { data } = event;
     const fullName = [data.first_name, data.last_name].filter(Boolean).join(" ") || null;
+
     await prisma.user.update({
-      where: {
-        id: data.id,
-      },
+      where: { id: data.id },
       data: {
-        email: data?.email_addresses[0]?.email_address,
+        email: data?.email_addresses?.[0]?.email_address ?? "",
         name: fullName,
         image: data.profile_image_url ?? data.image_url ?? null,
       },
